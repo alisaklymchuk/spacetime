@@ -29,10 +29,12 @@ def evaluate_model(model, **kwargs):
 def plot_forecasts(y_by_splits, splits, feature_dim=0, axes=None):
     # Save / plot predictions
 
+    import matplotlib.pyplot as plt
+
     n_plots = len(splits)  # hard-coded for now
-    if axes is None:
-        fig, axes = plt.subplots(1, n_plots, 
-                                 figsize=(6.4 * n_plots, 4.8 * n_plots))
+    # if axes is None:
+    fig, axes = plt.subplots(1, n_plots, 
+                                figsize=(6.4 * n_plots, 4.8 * n_plots))
 
     for split_ix, split in enumerate(splits):
         y = y_by_splits[split]
@@ -50,6 +52,10 @@ def plot_forecasts(y_by_splits, splits, feature_dim=0, axes=None):
                 pred_ix += 1
                 axis.legend()
                 axis.set_title(f'{split} forecasts', size=15)
+    
+    fig.tight_layout()
+    fig.savefig("forecasts.png", dpi=300, bbox_inches='tight')
+    plt.close(fig)
         
         
 def get_plotting_samples(y):

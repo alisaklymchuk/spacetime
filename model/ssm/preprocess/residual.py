@@ -13,7 +13,7 @@ class ResidualSSM(SSM):
     """
     def __init__(self, 
                  max_diff_order: int=4, 
-                 min_avg_window: int=4, 
+                 min_avg_window: int=4,
                  max_avg_window: int=720,
                  n_kernels: int=8,
                  kernel_repeat: int=16,

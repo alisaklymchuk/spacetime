@@ -1,7 +1,8 @@
-method: differencing
+method: ma_residual
 kwargs:
-  max_diff_order: 4
-  model_dim: 256
+  min_avg_window: 4
+  max_avg_window: 720
+  model_dim: 128
   n_kernels: 8
   kernel_dim: 4
   kernel_repeat: 16

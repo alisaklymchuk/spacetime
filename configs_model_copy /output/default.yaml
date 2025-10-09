@@ -1,8 +1,8 @@
-input_dim: 256
+input_dim: 128
 output_dim: 1
 method: mlp
 kwargs:
-  input_dim: 256
+  input_dim: 128
   output_dim: 1
   activation: gelu
   dropout: 0.2

@@ -1,6 +1,6 @@
 method: shift
 kwargs:
-  model_dim: 128
+  model_dim: 256
   n_kernels: 16
   kernel_dim: 64
   kernel_repeat: 1

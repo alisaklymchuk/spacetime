@@ -54,7 +54,7 @@ def plot_forecasts(y_by_splits, splits, feature_dim=0, axes=None):
                 axis.set_title(f'{split} forecasts', size=15)
     
     fig.tight_layout()
-    fig.savefig("forecasts.png", dpi=300, bbox_inches='tight')
+    fig.savefig("forecasts.png", dpi=300) #, bbox_inches='tight')
     plt.close(fig)
         
         

@@ -19,6 +19,20 @@ class SpaceTime(nn.Module):
                  horizon: int=1):
         super().__init__()
         
+        '''
+        from pprint import pprint
+        print ('\nembedding config:')
+        pprint (embedding_config)
+        print ('\encoder_config:')
+        pprint (encoder_config)
+        print ('\decoder_config:')
+        pprint (decoder_config)
+        print ('\output_config:')
+        pprint (output_config)
+        import sys
+        sys.exit()
+        '''
+
         self.embedding_config  = embedding_config
         self.encoder_config    = encoder_config
         self.decoder_config    = decoder_config
@@ -94,6 +108,7 @@ class SpaceTime(nn.Module):
         # where len = lag + horizon
         z = self.embedding(u)
         z = self.encoder(z)
+
         y_c, _ = self.decoder(z)  
         y_c = self.output(y_c)  # y_c is closed-loop output
 

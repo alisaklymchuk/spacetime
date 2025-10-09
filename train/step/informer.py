@@ -56,23 +56,69 @@ def shared_step(model, dataloader, optimizer, scheduler, criterions, epoch,
         
         for batch_ix, data in enumerate(pbar):
             x, y, *z = data
+
             
             # Only take in lag terms for input
             x = x[:, :model.lag, :]
             
-            # Transform batch data 
+            # Transform batch data
             u = input_transform(x)
             u = u.to(config.device)
 
+            '''
+            print ('\n'*4 + ' ')
+            print (f'u: {u.shape}')
+            '''
+
             # Return (model outputs), (model last-layer next-step inputs)
             y_pred, z_pred = model(u)
+
+            '''
+            print ('\n'*4)
+            for _y in y_pred:
+                print (_y.shape)
+            for _z in z_pred:
+                print (_z.shape)
+
+            print (output_transform)
+            '''
+
             # y_pred is closed-loop (y_c) and open-loop (y_o) model output predictions
             # i.e., (y_c, y_o) = y_pred
             y_pred = [output_transform(_y) if _y is not None else _y 
                       for _y in y_pred]
-            y_c, y_o = y_pred 
-            y_t = torch.cat([x, y], dim=1)  # Supervise all time-steps
             
+            '''
+            print ('\n'*4)
+            for _y in y_pred:
+                print (_y.shape)
+            for _z in z_pred:
+                print (_z.shape)
+            '''
+
+            y_c, y_o = y_pred
+
+            num_series = y.shape[-1]
+            x_prices = x[..., :num_series]  
+            y_t = torch.cat([x_prices, y], dim=1)  # Supervise all time-steps
+            
+            y_c = y_c[..., :1] if y_c is not None else None
+            y_o = y_o[..., :1] if y_o is not None else None
+            y_t = y_t[..., :1] if y_t is not None else None
+
+            '''
+            all_identical = (y_c == y_c[..., :1]).all(dim=-1).all()
+            print(f'\nall_identical: {all_identical}')
+
+            print ('\n'*4 + ' ')
+            print (f'y_c: {y_c.shape}')
+            print (f'y_o: {y_o.shape}')
+            print (f'y_t: {y_t.shape}')
+            print ('\n'*4 + ' ')
+            import sys
+            sys.exit()
+            '''
+
             # config.criterion_weights specifies relative contribution for each loss component
             # - w0 weights loss over model predictions for horizon (future) terms
             # - w1 weights loss over model predictions for lag (historical) terms

@@ -1,9 +1,11 @@
-method: differencing
+method: residual
 kwargs:
   max_diff_order: 4
-  model_dim: 256
+  min_avg_window: 4
+  max_avg_window: 64
+  model_dim: 128
   n_kernels: 8
-  kernel_dim: 4
+  kernel_dim: 2
   kernel_repeat: 16
   n_heads: 1
   head_dim: 1

@@ -74,6 +74,21 @@ class Encoder(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.config = config
+
+        '''
+        from pprint import pprint
+        for block in config["blocks"]:
+            for key, data in block.items():
+                print (key)
+                pprint(data)
+        
+        print(f'num blocks: {len(config["blocks"])}')
+        
+        pprint(config)
+        import sys
+        sys.exit()
+        '''
+
         self.blocks = self.init_blocks(config)
         
     def init_blocks(self, config):

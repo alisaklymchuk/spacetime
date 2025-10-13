@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 from omegaconf import OmegaConf
 from utils.logging import print_config
 from pprint import pprint
+from datetime import timedelta
 
 # Hacky args via an OmegaConf config
 args = """
@@ -21,13 +22,8 @@ seed: 42
 """
 args = OmegaConf.create(args)
 
-import yfinance as yf
-'''
 
-yf_data = yf.Ticker('^GSPC')  # Ticker for S&P 500
-data = yf_data.history(period='max', start='1993-01-01',  # wow 30 years of data
-                       auto_adjust=True)  
-'''
+import yfinance as yf
 
 yf_data_list = [
     yf.Ticker('AAPL'),
@@ -43,37 +39,42 @@ yf_ticker_list = [
     yf.Ticker('XLM-GBP')
 ]
 
-'''
-yf_data_list = [
-    yf.Ticker('XRP-GBP'),
-]
-'''
+start_date = '2024-02-14'  # Format: 'YYYY-MM-DD'
+end_date = '2025-10-14'    # Format: 'YYYY-MM-DD'
 
-'''
-dfs_list = [
-    pd.DataFrame(
-        data.history(
-            # period='10d',
-            start='2024-01-01',
-            interval='1h',
-            auto_adjust=True
-            )
-            ).reset_index()
-        for data in yf_data_list
-    ]
-'''
+# Option 2: Specify end date and lookback days (comment out Option 1 if using this)
+# end_date = '2024-12-31'
+# days_lookback = 90
 
-dfs_list = []
+end_date = pd.to_datetime(end_date)
+
+# If using lookback approach, calculate start_date
+if 'days_lookback' in locals():
+    start_date = end_date - timedelta(days=days_lookback)
+else:
+    start_date = pd.to_datetime(start_date)
+
+print ()
+
+print(f'Target date range: {start_date} to {end_date}')
+print(f'Window size: {(end_date - start_date).days} days\n')
+
+dfs_dict = {}
+
+# Calculate how many days to fetch (add buffer for safety)
+days_needed = (end_date - start_date).days # + 30  # +30 day buffer
+fetch_period = f'{days_needed}d'
 
 for ticker in yf_ticker_list:
     print (f'\rFetching {ticker.ticker}', end='', flush=True)
 
-    df = ticker.history(period='680d', interval='1h', auto_adjust=True)
+    df = ticker.history(period=fetch_period, interval='1h', auto_adjust=True)
     # drop timezone if you like
     try:
         df = df.tz_convert(None)   # if tz-aware
     except Exception:
         pass
+
     df = df.reset_index()
 
     # normalize name to 'Date'
@@ -83,7 +84,67 @@ for ticker in yf_ticker_list:
         df = df.rename(columns={'date': 'Date'})
     # else keep if already 'Date'
 
-    dfs_list.append(df)
+    # Ensure Date is datetime type
+    df['Date'] = pd.to_datetime(df['Date'])
+
+    df = df[(df['Date'] >= start_date) & (df['Date'] <= end_date)]
+
+    if len(df) == 0:
+        print(f'\nWarning: No data for {ticker.ticker} in specified date range')
+        continue
+
+    dfs_dict[ticker.ticker] = df
+    # dfs_list.append(df)
+
+print(f'\n\nFetched data for {len(dfs_dict)} tickers')
+
+print('\nAligning dataframes...')
+
+# Step 2: Create a common date range from the union of all dates
+all_dates = pd.DatetimeIndex([])
+for df in dfs_dict.values():
+    all_dates = all_dates.union(df['Date'])
+
+# Filter common dates to our target range (in case of any outliers)
+all_dates = all_dates[(all_dates >= start_date) & (all_dates <= end_date)]
+# Sort the common date index
+all_dates = all_dates.sort_values()
+
+print(f'Common date index: {len(all_dates)} timestamps')
+
+aligned_dfs = {}
+
+for ticker_name, df in dfs_dict.items():
+    # Set Date as index for reindexing
+    df = df.set_index('Date')
+    
+    # Reindex to common dates
+    df_aligned = df.reindex(all_dates)
+    
+    # Interpolate missing values
+    # Use 'time' method for time-series data (considers temporal distance)
+    df_aligned = df_aligned.interpolate(method='time', limit_direction='both')
+    
+    # For any remaining NaNs at the edges, forward/backward fill
+    # df_aligned = df_aligned.fillna(method='ffill').fillna(method='bfill')
+    df_aligned = df_aligned.ffill().bfill()
+    
+    # Reset index to get Date back as a column
+    df_aligned = df_aligned.reset_index().rename(columns={'index': 'Date'})
+    
+    aligned_dfs[ticker_name] = df_aligned
+
+# Convert back to list if needed
+dfs_list = list(aligned_dfs.values())
+
+print(f'Aligned {len(dfs_list)} dataframes to {len(all_dates)} rows each')
+
+# Verify alignment
+print('\nVerification:')
+for ticker_name, df in aligned_dfs.items():
+    date_min = df['Date'].min()
+    date_max = df['Date'].max()
+    print(f'{ticker_name}: {len(df)} rows, Date range: {date_min} to {date_max}')
 
 print()
 # print ('\r' + ' '*100)
@@ -102,7 +163,7 @@ for idx, df in enumerate(dfs_list):
     plt.savefig(f"plot{idx}.png", dpi=300, bbox_inches='tight')
 '''
 
-print ('saviing plots...')
+print ('saving plots...')
 
 for idx, df in enumerate(dfs_list):
     plt.figure(figsize=(8, 4))
@@ -208,7 +269,6 @@ def time_embedding(timestamp: float) -> torch.Tensor:
     encoding = torch.stack([torch.sin(angles), torch.cos(angles)], dim=1).flatten()
     return encoding
 
-# '''
 class MultiSeriesStockPriceDataset(Dataset):
     def __init__(self, 
                  data_list: list[np.array], 
@@ -375,65 +435,198 @@ def load_data(df_list: list[pd.DataFrame],
                    for ix, dataset in enumerate(datasets)]
     
     return dataloaders
-# '''
 
 '''
-class YahooStockPriceDataset(Dataset):
-    def __init__(self, data: np.array, lag: int, horizon: int):
+class MultiSeriesStockPriceDataset(Dataset):
+    def __init__(self, 
+                 data_list: list[np.array], 
+                 lag: int, 
+                 horizon: int,
+                 timestamps: np.array = None,
+                 use_time_encoding: bool = False,
+                 reverse_prob: float = 0.0):
+        """
+        Args:
+            data_list: List of numpy arrays, each with shape (num_samples, window_size)
+            lag: Number of historical timesteps
+            horizon: Number of future timesteps to predict
+            timestamps: Array of Unix timestamps for each sample, shape (num_samples, window_size)
+            use_time_encoding: Whether to append time encodings to features
+            reverse_prob: Probability of reversing time dimension (0.0 to 1.0)
+        """
         super().__init__()
-        self.data_x = torch.tensor(data).unsqueeze(-1).float()
-        self.data_y = copy.deepcopy(self.data_x[:, -horizon:, :])
+        # Convert list of arrays to tensors and stack along new dimension
+        # Shape: (num_samples, window_size, num_series)
+        self.data_x = torch.stack([
+            torch.tensor(data).float() for data in data_list
+        ], dim=-1)
         
+        self.data_y = copy.deepcopy(self.data_x[:, -horizon:, :])
         self.lag = lag
         self.horizon = horizon
+        self.use_time_encoding = use_time_encoding
+        self.timestamps = timestamps
+        self.reverse_prob = reverse_prob
+        
+        # Pre-compute time encodings if needed
+        if use_time_encoding:
+            if timestamps is None:
+                raise ValueError("timestamps must be provided when use_time_encoding=True")
+            self.time_encodings = self._compute_time_encodings()
+        
+    def _compute_time_encodings(self):
+        """
+        Compute time encodings for all samples and timesteps.
+        
+        Returns:
+            Tensor of shape (num_samples, window_size, 8)
+            where 8 = 4 periods * 2 (sin, cos)
+        """
+        num_samples, window_size = self.timestamps.shape
+        encodings = torch.zeros(num_samples, window_size, 8)
+
+        print ('computing time embeddings')
+
+        for i in range(num_samples):
+            print (f'\r{i + 1} of {num_samples}', end='', flush=True)
+            for j in range(window_size):
+                encodings[i, j] = time_embedding(self.timestamps[i, j])
+        print()
+        return encodings
         
     def __len__(self):
         return len(self.data_x)
     
     def __getitem__(self, idx):
-        x = self.data_x[idx]
-        y = self.data_y[idx]
-        x[-self.horizon:] = 0  # Mask input horizon terms
+        x = self.data_x[idx].clone()  # Shape: (lag+horizon, num_series)
+        y = self.data_y[idx]  # Shape: (horizon, num_series)
+        
+        # Randomly decide whether to reverse time dimension
+        should_reverse = torch.rand(1).item() < self.reverse_prob
+        
+        if should_reverse:
+            # Reverse time dimension (dim 0)
+            x = torch.flip(x, dims=[0])
+            y = torch.flip(y, dims=[0])
+        
+        if self.use_time_encoding:
+            # Append time encodings to features
+            time_enc = self.time_encodings[idx]  # Shape: (lag+horizon, 8)
+            if should_reverse:
+                time_enc = torch.flip(time_enc, dims=[0])
+            x = torch.cat([x, time_enc], dim=-1)  # Shape: (lag+horizon, num_series + 8)
+        
+        # Mask input horizon terms (only price data, not time)
+        if should_reverse:
+            # After reversal, mask the first horizon timesteps
+            x[:self.horizon, :len(self.data_y[0, 0])] = 0
+        else:
+            # Normal case: mask the last horizon timesteps
+            x[-self.horizon:, :len(self.data_y[0, 0])] = 0
+        
         return x, y, (self.lag, self.horizon)
     
-    # For simplicity, we just keep these as identities.
-    # But we could imagine some kind of data transformation / scaling for the inputs
     def transform(self, x):
         return x
     
     def inverse_transform(self, x):
         return x
-    
-# Function to load dataloaders for train, val, and test splits
-def load_data(df: pd.DataFrame, 
-              lag: int, 
-              horizon: int, 
-              target: str, 
+
+def load_data(df_list: list,
+              lag: int,
+              horizon: int,
+              target: str,
               val_ratio: float,
-              test_year_month_day: list[int], 
-              **dataloader_kwargs: any):
+              test_year_month_day: list[int],
+              use_time_encoding: bool = False,
+              date_column: str = 'Date',
+              reverse_prob: float = 0.5,
+              **dataloader_kwargs):
+    """
+    Load synchronized data from multiple dataframes.
     
-    # Convert day-wise data into sequences of lag + horizon terms
-    samples = [w.to_numpy() for w in df[target].rolling(window=lag + horizon)][lag + horizon - 1:]
-    dates   = [w for w in df['Date'].rolling(window=lag + horizon)][lag + horizon - 1:]
+    Args:
+        df_list: List of dataframes with same dates and structure
+        lag: Number of historical timesteps
+        horizon: Number of future timesteps to predict
+        target: Column name containing the target values
+        val_ratio: Ratio of validation data
+        test_year_month_day: [year, month, day] for test split
+        use_time_encoding: Whether to add cyclical time encodings
+        date_column: Name of the date column in dataframes
+        reverse_prob: Probability of reversing time dimension (default 0.0)
+        **dataloader_kwargs: Additional arguments for DataLoader
+    
+    Returns:
+        List of dataloaders [train_loader, val_loader, test_loader]
+    """
+    import pandas as pd
+    import datetime
+    
+    # Ensure all dataframes have the same dates
+    all_samples = []
+    
+    for df in df_list:
+        # Convert day-wise data into sequences of lag + horizon terms
+        samples = [w.to_numpy() for w in df[target].rolling(window=lag + horizon)][lag + horizon - 1:]
+        all_samples.append(samples)
+    
+    # Use dates from first dataframe (assuming all are synchronized)
+    df_list[0][date_column] = pd.to_datetime(df_list[0][date_column])
+    dates = [w for w in df_list[0][date_column].rolling(window=lag + horizon)][lag + horizon - 1:]
+    
+    # Prepare timestamps if time encoding is requested
+    timestamps = None
+    if use_time_encoding:
+        # Convert dates to Unix timestamps for each window
+        timestamps = []
+        for date_window in dates:
+            window_timestamps = [d.timestamp() for d in date_window]
+            timestamps.append(window_timestamps)
+        timestamps = np.array(timestamps)  # Shape: (num_samples, window_size)
     
     # Set aside test samples by date
-    test_date = datetime.date(*test_year_month_day)
-    df['Date'] = pd.to_datetime(df['Date']).dt.date
-    test_ix = len(dates) - df[df['Date'] >= test_date].shape[0]
-    test_samples = np.array(samples[test_ix:])
+    test_date = pd.to_datetime(datetime.datetime(*test_year_month_day)).date()
+    df_list[0]['_date_only'] = df_list[0][date_column].dt.date
+    test_ix = len(dates) - df_list[0][df_list[0]['_date_only'] >= test_date].shape[0]
+    
+    # Split each series
+    test_samples_list = [np.array(samples[test_ix:]) for samples in all_samples]
+    test_timestamps = timestamps[test_ix:] if timestamps is not None else None
     
     # Get training + validation samples
-    train_indices, val_indices = train_val_split(np.arange(len(dates[:test_ix])), val_ratio)
-    train_samples = np.array(samples[:val_indices[0]])
-    val_samples = np.array(samples[val_indices[0]:val_indices[-1]])
+    train_indices, val_indices = train_val_split(
+        np.arange(len(dates[:test_ix])), 
+        val_ratio=val_ratio  # Explicitly pass as keyword arg
+    )
+
+    train_samples_list = [np.array(samples[:val_indices[0]]) for samples in all_samples]
+    val_samples_list = [np.array(samples[val_indices[0]:val_indices[-1]]) for samples in all_samples]
+    
+    train_timestamps = timestamps[:val_indices[0]] if timestamps is not None else None
+    val_timestamps = timestamps[val_indices[0]:val_indices[-1]] if timestamps is not None else None
     
     # PyTorch datasets and dataloaders
-    datasets = [YahooStockPriceDataset(_samples, lag, horizon)
-                for _samples in [train_samples, val_samples, test_samples]]
+    # Only apply time reversal augmentation to training set
+    datasets = [
+        MultiSeriesStockPriceDataset(
+            sample_list, 
+            lag, 
+            horizon,
+            timestamps=ts,
+            use_time_encoding=use_time_encoding,
+            reverse_prob=reverse_prob if ix == 0 else 0.0  # Only augment training data
+        )
+        for ix, (sample_list, ts) in enumerate([
+            (train_samples_list, train_timestamps),
+            (val_samples_list, val_timestamps),
+            (test_samples_list, test_timestamps)
+        ])
+    ]
     
     dataloaders = [DataLoader(dataset, shuffle=True if ix == 0 else False, **dataloader_kwargs)
                    for ix, dataset in enumerate(datasets)]
+    
     return dataloaders
 '''
 
@@ -456,10 +649,10 @@ dataset_configs = f"""
 lag: {args.lag}
 horizon: {args.horizon}
 target: Close
-val_ratio: 0.1
+val_ratio: 0.142
 test_year_month_day:
 - 2025
-- 6
+- 8
 - 1
 use_time_encoding: true
 """
@@ -500,14 +693,14 @@ kwargs:
 """
 
 embedding_config = """
-method: linear_mod
+method: linear
 kwargs:
   input_dim: 4
   embedding_dim: 256
 """
 
 embedding_config = """
-method: linear
+method: linear_mod
 kwargs:
   input_dim: 4
   embedding_dim: 256

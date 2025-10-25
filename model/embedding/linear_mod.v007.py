@@ -135,22 +135,9 @@ class RowScaleShift(torch.nn.Module):
     def __init__(self):
         super().__init__()
         # self.scale = nn.Parameter(torch.ones(1, 1, 4))  # (1, 1, h)
-        init_scale = torch.tensor([
-            0.4,        # plot0
-            0.0035,     # plot1
-            0.009,      # plot2
-            2,          # plot3
-            0.01,       # plot4
-            0.04,       # plot5
-            0.00028,    # plot6
-            0.005,      # plot7
-            0.00125,    # plot8
-            0.004,      # plot9
-            2.5,        # plot10
-            0.05        # plot11
-            ]).view(1, 1, 12)
+        init_scale = torch.tensor([0.4, 0.0035, 0.009, 2]).view(1, 1, 4)
         self.scale = torch.nn.Parameter(init_scale.clone())
-        self.shift = nn.Parameter(torch.zeros(1, 1, 12))  # (1, 1, h)
+        self.shift = nn.Parameter(torch.zeros(1, 1, 4))  # (1, 1, h)
 
     def forward(self, x):
         return x * self.scale + self.shift
@@ -177,7 +164,7 @@ class SimpleMLP(nn.Module):
         return self.encoder(combined)  # (n, l, 256)
 
 class AttentionEncoder(nn.Module):
-    def __init__(self, input_dim=32, time_dim=8, hidden_dim=256, 
+    def __init__(self, input_dim=4, time_dim=8, hidden_dim=256, 
                  output_dim=256, num_heads=8, num_layers=2):
         super().__init__()
         
@@ -217,8 +204,8 @@ class AttentionEncoder(nn.Module):
         return self.norm(output)
 
 class CrossModalEncoder(nn.Module):
-    def __init__(self, input_dim=12, time_dim=8, hidden_dim=128, 
-                 output_dim=256, num_heads=16, dropout=0.1):
+    def __init__(self, input_dim=4, time_dim=8, hidden_dim=128, 
+                 output_dim=128, num_heads=8):
         super().__init__()
         
         # Separate pathways for each modality
@@ -238,7 +225,7 @@ class CrossModalEncoder(nn.Module):
         self.cross_attn = nn.MultiheadAttention(
             embed_dim=hidden_dim,
             num_heads=num_heads,
-            dropout=dropout,
+            dropout=0.2,
             batch_first=True
         )
         
@@ -246,20 +233,19 @@ class CrossModalEncoder(nn.Module):
         self.self_attn = nn.MultiheadAttention(
             embed_dim=hidden_dim * 2,
             num_heads=num_heads,
-            dropout=dropout,
+            dropout=0.2,
             batch_first=True
         )
         
         # Feed-forward network
         self.ffn = nn.Sequential(
             nn.Linear(hidden_dim * 2, hidden_dim * 4),
-            nn.LayerNorm(hidden_dim * 4),
             nn.GELU(),
-            nn.Dropout(dropout),
+            nn.Dropout(0.2),
             nn.Linear(hidden_dim * 4, output_dim),
-            nn.LayerNorm(output_dim),
+            nn.LayerNorm(output_dim)
         )
-
+        
     def forward(self, x, time_enc):
         # x: (n, l, 4), time_enc: (n, l, 8)
         x_emb = self.input_encoder(x)  # (n, l, 128)
@@ -276,7 +262,6 @@ class CrossModalEncoder(nn.Module):
         
         # FFN with residual
         output = self.ffn(refined + combined)  # (n, l, 256)
-
         return output
 
 class SingleCopy(torch.nn.Module):
@@ -293,67 +278,6 @@ class FourCopyTimeEmb(torch.nn.Module):
     def forward(self, values, time_emb):
         values = values.repeat(1, 1, 120)
         return torch.cat((values, time_emb), -1)
-
-class TimewarpStyle(torch.nn.Module):
-    def __init__(self, c=192, exp=16, output_dim=128):
-        super().__init__()
-
-        self.exp = exp
-        self.c = c
-        self.output_dim = output_dim
-
-        self.conv0 = torch.nn.Sequential(
-            torch.nn.Conv2d(4, c - 4, 3, 1, 1),
-            torch.nn.Mish(),
-            torch.nn.Conv2d(c - 4, c - 4, 3, 1, 1),
-            torch.nn.Mish(),
-        )
-        self.convblock0 = torch.nn.Sequential(
-            ResConvAtt(c),
-            ResConv(c),
-            ResConv(c),
-            ResConv(c),
-        )
-        self.convblock1 = torch.nn.Sequential(
-            ResConvAtt(c + 8),
-            ResConv(c + 8),
-            ResConv(c + 8),
-            ResConv(c + 8),
-        )
-
-        self.dimconv = torch.nn.Conv2d(exp, 1, 3, 1, 1)
-        self.lastconv = torch.nn.Conv2d(c + 8, 128, 1, 1, 0)
-
-
-    def forward(self, x, time_embeddings):
-        x = x.permute(0, 2, 1).unsqueeze(-1).expand(-1, -1, -1, self.exp)
-
-        feat = self.conv0(x)
-        feat = torch.cat((x, feat), 1)
-
-        feat = self.convblock0(feat)
-
-        time_embeddings = time_embeddings.permute(0, 2, 1).unsqueeze(-1).expand(-1, -1, -1, self.exp)
-        feat = torch.cat((feat, time_embeddings), 1)
-
-        feat = self.convblock1(feat)
-
-        feat = feat.permute(0, 3, 2, 1)
-        feat = self.dimconv(feat)
-
-        feat = feat.permute(0, 3, 2, 1)
-
-        feat = self.lastconv(feat)
-
-        feat = feat.permute(0, 3, 2, 1)
-
-        feat = feat.squeeze(1)
-
-        scale = int(self.output_dim // self.exp)
-
-        # feat = feat.repeat(1, 1, 4)
-
-        return feat
 
 class ModifiedLinearEmbedding(Embedding):
     def __init__(self, input_dim, embedding_dim):
@@ -407,9 +331,8 @@ class ModifiedLinearEmbedding(Embedding):
             Tensor of shape (..., embedding_dim)
         """
 
-        values = self.norm(x[..., :12])
+        values = self.norm(x[..., :4])
         time_embeddings = x[..., -8:]
-
         return self.encoder(values, time_embeddings)
 
         '''

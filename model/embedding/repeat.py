@@ -1,6 +1,6 @@
 from einops import repeat
 from .base import Embedding
-    
+import torch
 
 class RepeatEmbedding(Embedding):
     def __init__(self, 
@@ -20,9 +20,10 @@ class RepeatEmbedding(Embedding):
         super().__init__(input_dim, embedding_dim)
         
     def repeat(self, x):
+        # x = x * torch.tensor([0.4, 0.0035, 0.009, 2]).view(1, 1, 4).to(x.device)
         return repeat(x, 'b l d -> b l (r d)', 
                       r=self.embedding_dim // self.input_dim)
         
-    def initialize_layers(self):  
+    def initialize_layers(self):
         self.layers = self.repeat
         

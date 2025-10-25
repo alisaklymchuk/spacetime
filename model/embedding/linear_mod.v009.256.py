@@ -135,22 +135,9 @@ class RowScaleShift(torch.nn.Module):
     def __init__(self):
         super().__init__()
         # self.scale = nn.Parameter(torch.ones(1, 1, 4))  # (1, 1, h)
-        init_scale = torch.tensor([
-            0.4,        # plot0
-            0.0035,     # plot1
-            0.009,      # plot2
-            2,          # plot3
-            0.01,       # plot4
-            0.04,       # plot5
-            0.00028,    # plot6
-            0.005,      # plot7
-            0.00125,    # plot8
-            0.004,      # plot9
-            2.5,        # plot10
-            0.05        # plot11
-            ]).view(1, 1, 12)
+        init_scale = torch.tensor([0.4, 0.0035, 0.009, 2]).view(1, 1, 4)
         self.scale = torch.nn.Parameter(init_scale.clone())
-        self.shift = nn.Parameter(torch.zeros(1, 1, 12))  # (1, 1, h)
+        self.shift = nn.Parameter(torch.zeros(1, 1, 4))  # (1, 1, h)
 
     def forward(self, x):
         return x * self.scale + self.shift
@@ -177,7 +164,7 @@ class SimpleMLP(nn.Module):
         return self.encoder(combined)  # (n, l, 256)
 
 class AttentionEncoder(nn.Module):
-    def __init__(self, input_dim=32, time_dim=8, hidden_dim=256, 
+    def __init__(self, input_dim=4, time_dim=8, hidden_dim=256, 
                  output_dim=256, num_heads=8, num_layers=2):
         super().__init__()
         
@@ -217,8 +204,8 @@ class AttentionEncoder(nn.Module):
         return self.norm(output)
 
 class CrossModalEncoder(nn.Module):
-    def __init__(self, input_dim=12, time_dim=8, hidden_dim=128, 
-                 output_dim=256, num_heads=16, dropout=0.1):
+    def __init__(self, input_dim=192, time_dim=8, hidden_dim=256, 
+                 output_dim=128, num_heads=64, dropout=0.1):
         super().__init__()
         
         # Separate pathways for each modality
@@ -253,13 +240,31 @@ class CrossModalEncoder(nn.Module):
         # Feed-forward network
         self.ffn = nn.Sequential(
             nn.Linear(hidden_dim * 2, hidden_dim * 4),
-            nn.LayerNorm(hidden_dim * 4),
             nn.GELU(),
             nn.Dropout(dropout),
             nn.Linear(hidden_dim * 4, output_dim),
-            nn.LayerNorm(output_dim),
+            nn.LayerNorm(output_dim)
         )
 
+        '''
+        c = 48
+
+        self.conv0 = torch.nn.Sequential(
+            torch.nn.Conv2d(1, c, 3, 1, 1),
+            torch.nn.Mish(True),
+        )
+
+        self.convblock0 = torch.nn.Sequential(
+            ResConvAtt(c),
+            ResConv(c),
+            ResConv(c),
+            ResConv(c),
+        )
+
+        self.lastconv = torch.nn.Conv2d(c, 1, 1, 1, 0)
+        '''
+
+        
     def forward(self, x, time_enc):
         # x: (n, l, 4), time_enc: (n, l, 8)
         x_emb = self.input_encoder(x)  # (n, l, 128)
@@ -276,6 +281,10 @@ class CrossModalEncoder(nn.Module):
         
         # FFN with residual
         output = self.ffn(refined + combined)  # (n, l, 256)
+
+        # output = self.conv0(output.unsqueeze(1))
+        # output = self.convblock0(output)
+        # output = self.lastconv(output).squeeze(1)
 
         return output
 
@@ -407,7 +416,7 @@ class ModifiedLinearEmbedding(Embedding):
             Tensor of shape (..., embedding_dim)
         """
 
-        values = self.norm(x[..., :12])
+        values = x[..., :192]
         time_embeddings = x[..., -8:]
 
         return self.encoder(values, time_embeddings)

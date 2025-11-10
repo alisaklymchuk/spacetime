@@ -107,7 +107,7 @@ class SpaceTime(nn.Module):
         # Assume u.shape is (batch x len x dim), 
         # where len = lag + horizon
         z = self.embedding(u)
-        # z = self.encoder(z)
+        z = self.encoder(z)
 
         y_c, _ = self.decoder(z)  
         y_c = self.output(y_c)  # y_c is closed-loop output

@@ -7,5 +7,5 @@ scheduler:
   _name_: plateau
   mode: min  # ${train.mode} # Which metric to monitor
   factor: 0.1  # Decay factor when ReduceLROnPlateau is used
-  patience: 20
+  patience: 10
   min_lr: 0.0  # Minimum learning rate during annealing

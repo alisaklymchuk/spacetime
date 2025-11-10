@@ -57,8 +57,6 @@ if 'days_lookback' in locals():
 else:
     start_date = pd.to_datetime(start_date)
 
-print ()
-
 print(f'Target date range: {start_date} to {end_date}')
 print(f'Window size: {(end_date - start_date).days} days\n')
 
@@ -69,7 +67,7 @@ days_needed = (end_date - start_date).days # + 30  # +30 day buffer
 fetch_period = f'{days_needed}d'
 
 for ticker in yf_ticker_list:
-    print (f'\rFetching {ticker.ticker}', end='', flush=True)
+    print(f'\rFetching {ticker.ticker}', end='', flush=True)
 
     df = ticker.history(start=start_date, end=end_date, interval='1h', auto_adjust=True)
     # drop timezone if you like

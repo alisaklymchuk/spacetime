@@ -1,212 +1,3 @@
-yf_list = yf_list = [
-    "XRP-GBP",
-    "ADA-GBP",
-    "BTC-GBP",
-    "XLM-GBP",
-    "LTC-GBP",
-    "ETC-GBP",
-    "ETH-GBP",
-    "SOL-GBP",
-    "BNB-GBP",
-    "XMR-GBP",
-    "DOGE-GBP",
-    "LINK-GBP",
-]
-
-'''
-    "ADA-GBP",
-    "BTC-GBP",
-    "XLM-GBP",
-    "LTC-GBP",
-    "ETC-GBP",
-    "ETH-GBP",
-    "SOL-GBP",
-    "BNB-GBP",
-    "XMR-GBP",
-    "DOGE-GBP",
-    "LINK-GBP",
-    "AVAX-GBP",
-    "TRX-GBP",
-    "USDT-GBP",
-    "WAVES-GBP",
-    "BCH-GBP",
-    "FLOW-GBP",
-    "DAI-GBP",
-    "DOT-GBP",
-    "FORTH-USD",
-    "CFX-USD",
-    "USDC-USD",
-    "USDT-USD",
-    "PYUSD-USD",
-    "EURQ-USD",
-    "EURT-USD",
-    "PEPE24478-USD",
-    "GBPCHF=X",
-    "GBPCAD=X",
-    "GBPJPY=X",
-    "GBPEUR=X",
-    "GBPUSD=X",
-    "GBPCNY=X",
-    "GBPINR=X",
-    "GBPAUD=X",
-    "GBPRUB=X",
-    "GBPUAH=X",
-    "GBPSEK=X",
-    "GBPNOK=X",
-    "USDCAD=X",
-    "NZDUSD=X",
-    "EURGBP=X",
-    "EURJPY=X",
-    "EURCHF=X",
-    "AUDJPY=X",
-    "USDCNY=X",
-    "CNYUSD=X",
-    "USDINR=X",
-    "INRUSD=X",
-    "CNYINR=X",
-    "INRCNY=X",
-    "EURINR=X",
-    "USDZAR=X",
-    "USDBRL=X",
-    "USDTRY=X",
-    "USDMXN=X",
-    "GBPXCU=X",
-    "USDXCU=X",
-    "EURXCU=X",
-    "CADXCU=X",
-    "JPYXCU=X",
-    "INRXCU=X",
-    "CNYXCU=X",
-    "AUDXCU=X",
-    "GBPXDR=X",
-    "USDXDR=X",
-    "EURXDR=X",
-    "USDSGD=X",
-    "JPYXDR=X",
-    "INRXDR=X",
-    "CNYXDR=X",
-    "AUDXDR=X",
-    "GC=F",
-    "SI=F",
-    "PL=F",
-    "PA=F",
-    "HG=F",
-    "ZC=F",
-    "ZW=F",
-    "ZS=F",
-    "KC=F",
-    "CC=F",
-    "SB=F",
-    "CT=F",
-    "LE=F",
-    "OJ=F",
-    "SLV",
-    "SIVR",
-    "AGQ",
-    "ZSL",
-    "SIL",
-    "SILJ",
-    "SILVERBEES.NS",
-    "^GSPC",
-    "^NDX",
-    "^IXIC",
-    "^DJI",
-    "^RUT",
-    "^VIX",
-    "DX-Y.NYB",
-    "^TNX",
-    "URTH",
-    "COIN",
-    "GBTC",
-    "BITQ",
-    "BITO",
-    "MSTR",
-    "^FTSE",
-    "^FTMC",
-    "FTAL.L",
-    "EWU",
-    "VUKE.L",
-    "INFU.L",
-    "^FTLC",
-    "EEM",
-    "VT",
-    "IOO",
-    "IDV",
-    "ACWI",
-    "^STOXX50E",
-    "^GDAXI",
-    "^HSI",
-    "^NSEI",
-    "^BSESN",
-    "000001.SS",
-    "^HSCE",
-    "^KS11",
-    "^AXJO",
-    "^STI",
-    "^TWII",
-    "^NZ50",
-    "^JKSE",
-    "^FCHI",
-    "^IBEX",
-    "^AEX",
-    "^OMX",
-    "IGLS.L",
-    "IGLT.L",
-    "GLTY.L",
-    "IEUR",
-    "^AORD",
-    "^AXJO",
-    "^BFX",
-    "^BSESN",
-    "^BUK100P",
-    "^BVSP",
-    "^DJINET",
-    "^DJIPLCF",
-    "^DJIMI",
-    "^DJIENE",
-    "^IMUSS",
-    "^DJIEMG",
-    "FTSEMIB.MI",
-    "^GSPTSE",
-    "^HSIL",
-    "^HSIEV5UE",
-    "^JN0U.JO",
-    "HSIESGS.HK",
-    "^JKSE",
-    "^KLSE",
-    "^MERV",
-    "^NODOWD",
-    "^PTL",
-    "WIG.WA",
-    "^OMXCGI",
-    "^RT200TR",
-    "^TA125.TA",
-    "XAR",
-    "NATO",
-    "EUAD",
-    "^VIX1D",
-    "^VIX9D",
-    "^VIX6M",
-    "^VIX1Y",
-    "^VIXEQ",
-    "^VXGOG",
-    "^INDIAVIX",
-    "VXX",
-    "^XDA",
-    "^XDB",
-    "^XDE",
-    "^XDN",
-    "^125904-USD-STRD",
-    "^CASE30",
-    "^IPSA",
-    "^MXX",
-    "^N100",
-    "^XAX",
-    "^NYA",
-    "RTY=F",
-    "MGC=F" ]
-'''
-
 # General Setup
 import os
 import sys
@@ -234,142 +25,132 @@ args = OmegaConf.create(args)
 
 import yfinance as yf
 
+yf_list = [
+    "XRP-GBP",
+    "ADA-GBP",
+    "BTC-GBP",
+    "XLM-GBP",
+    "LTC-GBP",
+    "ETC-GBP",
+    "ETH-GBP",
+    "SOL-GBP",
+    "BNB-GBP",
+    "XMR-GBP",
+    "DOGE-GBP",
+    "LINK-GBP",
+]
+
 yf_ticker_list = [yf.Ticker(x) for x in yf_list]
+
 start_date = '2024-01-01'   # Format: 'YYYY-MM-DD'
 end_date = '2025-10-20'     # Format: 'YYYY-MM-DD'
+
 # Option 2: Specify end date and lookback days (comment out Option 1 if using this)
 # end_date = '2024-12-31'
 # days_lookback = 90
+
 end_date = pd.to_datetime(end_date)
+
 # If using lookback approach, calculate start_date
 if 'days_lookback' in locals():
     start_date = end_date - timedelta(days=days_lookback)
 else:
     start_date = pd.to_datetime(start_date)
-print()
+
+print ()
+
 print(f'Target date range: {start_date} to {end_date}')
 print(f'Window size: {(end_date - start_date).days} days\n')
 
 dfs_dict = {}
+
 # Calculate how many days to fetch (add buffer for safety)
 days_needed = (end_date - start_date).days # + 30  # +30 day buffer
 fetch_period = f'{days_needed}d'
 
-for i, ticker in enumerate(yf_ticker_list):
-    print(f'\rFetching {ticker.ticker}', end='', flush=True)
+for ticker in yf_ticker_list:
+    print (f'\rFetching {ticker.ticker}', end='', flush=True)
+
     df = ticker.history(start=start_date, end=end_date, interval='1h', auto_adjust=True)
-    
     # drop timezone if you like
     try:
         df = df.tz_convert(None)   # if tz-aware
     except Exception:
         pass
-    
+
     df = df.reset_index()
+
     # normalize name to 'Date'
     if 'Datetime' in df.columns:
         df = df.rename(columns={'Datetime': 'Date'})
     elif 'date' in df.columns:
         df = df.rename(columns={'date': 'Date'})
     # else keep if already 'Date'
-    
+
     # Ensure Date is datetime type
     df['Date'] = pd.to_datetime(df['Date'])
+
     df = df[(df['Date'] >= start_date) & (df['Date'] <= end_date)]
-    
+
     if len(df) == 0:
         print(f'\nWarning: No data for {ticker.ticker} in specified date range')
         continue
-    
+
     dfs_dict[ticker.ticker] = df
-    
-    # Store the first ticker's dates as reference
-    if i == 0:
-        reference_ticker = ticker.ticker
-        reference_dates = df['Date'].values
-        print(f' (Reference ticker - {len(reference_dates)} timestamps)')
+    # dfs_list.append(df)
 
 print(f'\n\nFetched data for {len(dfs_dict)} tickers')
 
-if len(dfs_dict) == 0:
-    print("No data fetched!")
-else:
-    print('\nAligning dataframes to first ticker...')
+print('\nAligning dataframes...')
+
+# Step 2: Create a common date range from the union of all dates
+all_dates = pd.DatetimeIndex([])
+for df in dfs_dict.values():
+    all_dates = all_dates.union(df['Date'])
+
+# Filter common dates to our target range (in case of any outliers)
+all_dates = all_dates[(all_dates >= start_date) & (all_dates <= end_date)]
+# Sort the common date index
+all_dates = all_dates.sort_values()
+
+print(f'Common date index: {len(all_dates)} timestamps')
+
+aligned_dfs = {}
+
+for ticker_name, df in dfs_dict.items():
+    # Set Date as index for reindexing
+    df = df.set_index('Date')
     
-    # Convert reference dates to DatetimeIndex for alignment
-    reference_dates = pd.DatetimeIndex(reference_dates)
-    print(f'Reference ticker ({reference_ticker}): {len(reference_dates)} timestamps')
-    print(f'Date range: {reference_dates.min()} to {reference_dates.max()}')
+    # Reindex to common dates
+    df_aligned = df.reindex(all_dates)
     
-    aligned_dfs = {}
+    # Interpolate missing values
+    # Use 'time' method for time-series data (considers temporal distance)
+    df_aligned = df_aligned.interpolate(method='time', limit_direction='both')
     
-    for ticker_name, df in dfs_dict.items():
-        if ticker_name == reference_ticker:
-            # First ticker stays as-is
-            aligned_dfs[ticker_name] = df
-            print(f'{ticker_name}: Using original data (reference)')
-        else:
-            # Set Date as index for reindexing
-            df = df.set_index('Date')
-            
-            # Create a new dataframe with reference dates
-            df_aligned = pd.DataFrame(index=reference_dates)
-            
-            # For each column in the original dataframe
-            for col in df.columns:
-                # Interpolate values to match reference timestamps
-                # First, combine both indices to enable interpolation
-                combined_index = df.index.union(reference_dates)
-                temp_series = df[col].reindex(combined_index)
-                
-                # Interpolate missing values (this fills gaps between known values)
-                temp_series = temp_series.interpolate(method='time', limit_direction='both')
-                
-                # For any remaining NaNs at edges, use forward/backward fill
-                temp_series = temp_series.ffill().bfill()
-                
-                # Now extract only the reference dates
-                df_aligned[col] = temp_series.reindex(reference_dates)
-            
-            # Handle any remaining NaNs (shouldn't be many after interpolation)
-            df_aligned = df_aligned.interpolate(method='time', limit_direction='both')
-            df_aligned = df_aligned.ffill().bfill()
-            
-            # Reset index to get Date back as a column
-            df_aligned = df_aligned.reset_index().rename(columns={'index': 'Date'})
-            
-            aligned_dfs[ticker_name] = df_aligned
-            print(f'{ticker_name}: Interpolated to reference timestamps')
+    # For any remaining NaNs at the edges, forward/backward fill
+    # df_aligned = df_aligned.fillna(method='ffill').fillna(method='bfill')
+    df_aligned = df_aligned.ffill().bfill()
     
-    # Convert back to list if needed (maintaining order with reference first)
-    dfs_list = [aligned_dfs[reference_ticker]]  # Reference ticker first
-    for ticker_name in aligned_dfs:
-        if ticker_name != reference_ticker:
-            dfs_list.append(aligned_dfs[ticker_name])
+    # Reset index to get Date back as a column
+    df_aligned = df_aligned.reset_index().rename(columns={'index': 'Date'})
     
-    print(f'\nAligned {len(dfs_list)} dataframes to {len(reference_dates)} rows each')
-    
-    # Verify alignment
-    print('\nVerification:')
-    for ticker_name, df in aligned_dfs.items():
-        date_min = df['Date'].min()
-        date_max = df['Date'].max()
-        num_nans = df.isna().sum().sum()
-        print(f'{ticker_name}:\t{len(df)} rows, Date range: {date_min} to {date_max}, NaN values: {num_nans}')
-    
-    # Additional check: verify all dataframes have identical timestamps
-    print('\nTimestamp alignment check:')
-    all_aligned = True
-    for ticker_name, df in aligned_dfs.items():
-        if not (df['Date'].values == reference_dates).all():
-            print(f'WARNING: {ticker_name} timestamps do not match reference!')
-            all_aligned = False
-    if all_aligned:
-        print('✓ All dataframes have identical timestamps')
-    
+    aligned_dfs[ticker_name] = df_aligned
+
+# Convert back to list if needed
+dfs_list = list(aligned_dfs.values())
+
+print(f'Aligned {len(dfs_list)} dataframes to {len(all_dates)} rows each')
+
+# Verify alignment
+print('\nVerification:')
+for ticker_name, df in aligned_dfs.items():
+    date_min = df['Date'].min()
+    date_max = df['Date'].max()
+    print(f'{ticker_name}: {len(df)} rows, Date range: {date_min} to {date_max}')
+
 print()
 
-'''
 print ('saving plots...')
 
 for idx, df in enumerate(dfs_list):
@@ -382,10 +163,9 @@ for idx, df in enumerate(dfs_list):
     plt.tight_layout()
     plt.savefig(f"plot{idx}.png", dpi=300, bbox_inches='tight')
     plt.close()
-'''
 
 '''
-# Create a single united plot
+# 2️⃣ Create a single united plot
 plt.figure(figsize=(10, 5))
 for idx, df in enumerate(dfs_list):
     plt.plot(df['Date'], df['Close'], label=f'Series {idx}')
@@ -703,13 +483,13 @@ embedding_config = """
 method: linear_mod
 kwargs:
   input_dim: 1
-  embedding_dim: 128
+  embedding_dim: 384
 """
 embedding_config = OmegaConf.create(embedding_config)
 
 encoder_config = """
 blocks:
-- input_dim: 128
+- input_dim: 384
   pre_config: 'ssm/preprocess/residual'
   ssm_config: 'ssm/companion_preprocess'
   mlp_config: 'mlp/default'
@@ -720,7 +500,7 @@ encoder_config = OmegaConf.create(encoder_config)
 
 decoder_config = """
 blocks:
-- input_dim: 128
+- input_dim: 384
   pre_config: 'ssm/preprocess/none'
   ssm_config: 'ssm/closed_loop/companion'
   mlp_config: 'mlp/identity'
@@ -730,14 +510,14 @@ blocks:
 decoder_config = OmegaConf.create(decoder_config)
 
 output_config = """
-input_dim: 128
+input_dim: 384
 output_dim: 1
 method: mlp
 kwargs:
-  input_dim: 128
+  input_dim: 384
   output_dim: 1
   activation: gelu
-  dropout: 0.1
+  dropout: 0.2
   layernorm: false
   n_layers: 1
   n_activations: 1
@@ -796,21 +576,21 @@ horizon: {dataset_configs.horizon}
 features: S
 lr: 1e-4
 weight_decay: 1e-4
-dropout: 0.2
+dropout: 0.25
 criterion_weights:
 - 10
 - 1
 - 10
 optimizer: adamw
 scheduler: timm_cosine
-max_epochs: 111
-early_stopping_epochs: 111
+max_epochs: 500
+early_stopping_epochs: 100
 data_transform: mean
 loss: informer_rmse
 val_metric: informer_rmse
 seed: 42
-dataset: Crypto12
-variant: AttEnc
+dataset: sp500
+variant: null
 model: SpaceTime
 """
 class Args():
@@ -865,7 +645,7 @@ model = train_model(model, optimizer, scheduler, dataloaders_by_split,
                     input_transform=input_transform,
                     output_transform=output_transform,
                     val_metric=args.val_metric, wandb=None, 
-                    return_best=False, early_stopping_epochs=args.early_stopping_epochs) 
+                    return_best=True, early_stopping_epochs=args.early_stopping_epochs) 
 
 from dataloaders import get_evaluation_loaders
 from train.evaluate import plot_forecasts

@@ -25,12 +25,22 @@ args = OmegaConf.create(args)
 
 import yfinance as yf
 
-yf_ticker_list = [
-    yf.Ticker('XRP-GBP'),
-    yf.Ticker('XMR-GBP'),
-    yf.Ticker('LTC-GBP'),
-    yf.Ticker('XLM-GBP')
+yf_list = [
+    "XRP-GBP",
+    "ADA-GBP",
+    "BTC-GBP",
+    "XLM-GBP",
+    "LTC-GBP",
+    "ETC-GBP",
+    "ETH-GBP",
+    "SOL-GBP",
+    "BNB-GBP",
+    "XMR-GBP",
+    "DOGE-GBP",
+    "LINK-GBP",
 ]
+
+yf_ticker_list = [yf.Ticker(x) for x in yf_list]
 
 start_date = '2024-01-01'   # Format: 'YYYY-MM-DD'
 end_date = '2025-10-20'     # Format: 'YYYY-MM-DD'
@@ -140,21 +150,6 @@ for ticker_name, df in aligned_dfs.items():
     print(f'{ticker_name}: {len(df)} rows, Date range: {date_min} to {date_max}')
 
 print()
-# print ('\r' + ' '*100)
-
-'''
-yf_data = yf.Ticker('BCH-GBP')
-data = yf_data.history(period='max', start='2020-01-01',
-                       auto_adjust=True)
-df = pd.DataFrame(data).reset_index()
-'''
-
-# Visualize closing prices
-'''
-for idx, df in enumerate(dfs_list):
-    plt.plot(df['Date'], df['Close'])
-    plt.savefig(f"plot{idx}.png", dpi=300, bbox_inches='tight')
-'''
 
 print ('saving plots...')
 
@@ -169,6 +164,7 @@ for idx, df in enumerate(dfs_list):
     plt.savefig(f"plot{idx}.png", dpi=300, bbox_inches='tight')
     plt.close()
 
+'''
 # 2️⃣ Create a single united plot
 plt.figure(figsize=(10, 5))
 for idx, df in enumerate(dfs_list):
@@ -181,9 +177,10 @@ plt.legend()
 plt.tight_layout()
 plt.savefig("plots_all.png", dpi=300, bbox_inches='tight')
 plt.close()
+'''
 
-args.lag = 192          # We'll use the prior 12 calendar weeks as inputs
-args.horizon = 48       # We'll then try to predict out the next 20 available days (4ish working weeks)
+args.lag = 192          # We'll use the prior 8 calendar days as inputs
+args.horizon = 48       # We'll then try to predict out the next 2 available days
 args.target = 'Close'   # Pick one feature to forecast 
 
 # Windows of samples
@@ -486,7 +483,7 @@ embedding_config = """
 method: linear_mod
 kwargs:
   input_dim: 1
-  embedding_dim: 128
+  embedding_dim: 256
 """
 embedding_config = OmegaConf.create(embedding_config)
 
@@ -587,7 +584,7 @@ criterion_weights:
 optimizer: adamw
 scheduler: timm_cosine
 max_epochs: 500
-early_stopping_epochs: 20
+early_stopping_epochs: 40
 data_transform: mean
 loss: informer_rmse
 val_metric: informer_rmse

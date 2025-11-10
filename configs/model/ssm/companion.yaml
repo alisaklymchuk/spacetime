@@ -1,6 +1,6 @@
 method: companion
 kwargs:
-  model_dim: 256
+  model_dim: 128
   n_kernels: 128
   kernel_dim: 64
   kernel_repeat: 1

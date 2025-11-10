@@ -51,6 +51,8 @@ def Activation(activation=None, size=None, dim=-1, inplace=False):
         return nn.GLU(dim=dim)
     elif activation == 'sigmoid':
         return nn.Sigmoid(inplace)
+    elif activation == 'mish':
+        return nn.Mish(inplace)
     else:
         raise NotImplementedError("hidden activation '{}' is not implemented".format(activation))
         

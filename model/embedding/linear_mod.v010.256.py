@@ -2,6 +2,127 @@ import torch
 import torch.nn as nn
 from .base import Embedding
 
+class FourierChannelAttention1D(torch.nn.Module):
+    def __init__(self, c, latent_dim, out_channels, bands=11, norm=False):
+        super().__init__()
+        self.bands = bands
+        self.norm = norm
+        self.c = c
+        self.alpha = torch.nn.Parameter(torch.full((1, c, 1), 1.0), requires_grad=True)
+        
+        # 1D convolutions instead of 2D
+        self.precomp = torch.nn.Sequential(
+            torch.nn.Conv1d(c + 1, c, 3, 1, 1),  # +1 for grid instead of +2
+            torch.nn.PReLU(c, 0.2),
+            torch.nn.Conv1d(c, c, 3, 1, 1),
+            torch.nn.PReLU(c, 0.2),
+        )
+        
+        self.encoder = torch.nn.Sequential(
+            torch.nn.AdaptiveMaxPool1d(bands),  # 1D pooling
+            torch.nn.Conv1d(c, out_channels, 1, 1, 0),
+            torch.nn.PReLU(out_channels, 0.2),
+            torch.nn.Flatten(start_dim=1),
+            torch.nn.Linear(bands * out_channels, latent_dim),  # bands instead of bands*bands
+            torch.nn.PReLU(latent_dim, 0.2)
+        )
+        
+        self.fc1 = torch.nn.Sequential(
+            torch.nn.Linear(latent_dim, bands * c),  # bands instead of bands*bands
+            torch.nn.Sigmoid(),
+        )
+        
+        self.fc2 = torch.nn.Sequential(
+            torch.nn.Linear(latent_dim, c),
+            torch.nn.Sigmoid(),
+        )
+    
+    def normalize_fft_magnitude(self, mag, st, target_size=64):
+        """
+        mag: [B, C, st]
+        Returns: [B, C, target_size]
+        """
+        B, C, _ = mag.shape
+        mag_reshaped = mag.view(B * C, 1, st)
+        norm_mag = torch.nn.functional.interpolate(
+            mag_reshaped, size=target_size, mode='linear', align_corners=False
+        )
+        norm_mag = norm_mag.view(B, C, target_size)
+        return norm_mag
+    
+    def denormalize_fft_magnitude(self, norm_mag, st):
+        """
+        norm_mag: [B, C, target_size]
+        Returns: [B, C, st]
+        """
+        B, C, target_size = norm_mag.shape
+        norm_mag = norm_mag.view(B * C, 1, target_size)
+        mag = torch.nn.functional.interpolate(
+            norm_mag, size=st, mode='linear', align_corners=False
+        )
+        mag = mag.view(B, C, st)
+        return mag
+    
+    def forward(self, x):
+        B, C, T = x.shape
+        
+        # 1D FFT
+        x_fft = torch.fft.rfft(x, norm='ortho')  # [B, C, T//2 + 1]
+        _, _, st = x_fft.shape
+        
+        mag = x_fft.abs()
+        phase = x_fft.angle()
+        
+        if self.norm:
+            mag_n = self.normalize_fft_magnitude(mag, st, target_size=64)
+        else:
+            mag_n = torch.nn.functional.interpolate(
+                mag,
+                size=64,
+                mode="linear",
+                align_corners=False,
+            )
+        
+        mag_n = torch.log1p(mag_n) + self.alpha * mag_n
+        
+        # 1D grid instead of 2D
+        grid = torch.linspace(0, 1, 64, device=x.device).view(1, 1, 64).expand(B, 1, 64)
+        
+        # Concatenate with grid
+        mag_n = self.precomp(torch.cat([mag_n, grid], dim=1))
+        
+        # Encode
+        latent = self.encoder(mag_n)
+        
+        # Spatial attention (now 1D)
+        spat_at = self.fc1(latent).view(-1, self.c, self.bands)
+        spat_at = spat_at / 0.4 + 0.5
+        
+        if self.norm:
+            spat_at = self.denormalize_fft_magnitude(spat_at, st)
+        else:
+            spat_at = torch.nn.functional.interpolate(
+                spat_at,
+                size=st,
+                mode="linear",
+                align_corners=False,
+            )
+        
+        # Apply spatial attention
+        mag = mag * spat_at.clamp(min=1e-6)
+        
+        # Reconstruct FFT
+        x_fft = torch.polar(mag, phase)
+        
+        # Inverse FFT
+        x = torch.fft.irfft(x_fft, n=T, norm='ortho')
+        
+        # Channel scale
+        chan_scale = self.fc2(latent).view(-1, self.c, 1) + 0.1
+        x = x * chan_scale.clamp(min=1e-6)
+        
+        return x
+
 class FourierChannelAttention(torch.nn.Module):
     def __init__(self, c, latent_dim, out_channels, bands = 11, norm = False):
         super().__init__()
@@ -217,35 +338,6 @@ class AttentionEncoder(nn.Module):
         return self.norm(output)
 
 class TemporalConv1d(nn.Module):
-    def __init__(self, in_features, out_features, kernel_size=3):
-        super().__init__()
-        self.conv = nn.Conv1d(in_features, out_features, kernel_size, padding='same')
-    
-    def forward(self, x):
-        # x: (batch, time, features)
-        x = x.transpose(1, 2)      # -> (batch, features, time)
-        x = self.conv(x)
-        x = x.transpose(1, 2)      # -> (batch, time, features)
-        return x
-
-class ResConv1d(torch.nn.Module):
-    def __init__(self, c, dilation=1):
-        super().__init__()
-        self.conv = torch.nn.Conv1d(c, c, 3, 1, 1, padding_mode = 'reflect', bias=True)
-        self.beta = torch.nn.Parameter(torch.ones((1, c, 1)), requires_grad=True)
-        # self.norm = torch.nn.LayerNorm(c),
-        # self.relu = torch.nn.GELU()
-        self.relu = torch.nn.PReLU(c, 0.2)
-
-    def forward(self, x):
-        # x: (batch, time, features)
-        x = x.transpose(1, 2)      # -> (batch, features, time)
-        x = self.relu(self.conv(x) * self.beta + x)
-        x = x.transpose(1, 2)      # -> (batch, time, features)
-        # x = self.norm(x)
-        return x
-
-class TemporalConv1d(nn.Module):
     def __init__(self, in_features, out_features, kernel_size=3, stride=1, padding='same'):
         super().__init__()
         self.conv = nn.Conv1d(
@@ -262,10 +354,102 @@ class TemporalConv1d(nn.Module):
         x = self.conv(x)
         x = x.transpose(1, 2)      # -> (batch, time, features)
         return x
+
+class TemporalConvTranspose1d(nn.Module):
+    def __init__(self, in_features, out_features):
+        super().__init__()
+        self.deconv = nn.ConvTranspose1d(
+            in_features,
+            out_features,
+            kernel_size=4,
+            stride=2,
+            padding=1
+        )
     
+    def forward(self, x):
+        # x: (batch, time, features)
+        x = x.transpose(1, 2)      # -> (batch, features, time)
+        x = self.deconv(x)
+        x = x.transpose(1, 2)      # -> (batch, time, features)
+        return x
+
+'''
+class ResConv1d(torch.nn.Module):
+    def __init__(self, c, dropout = 0.1):
+        super().__init__()
+        self.conv = torch.nn.Conv1d(c, c, 3, 1, 1, padding_mode = 'reflect', bias=True)
+        self.beta = torch.nn.Parameter(torch.ones((1, c, 1)), requires_grad=True)
+        self.norm = torch.nn.LayerNorm(c)
+        self.attention = nn.MultiheadAttention(
+                    embed_dim=c,
+                    num_heads=8,
+                    dropout=dropout,
+                    batch_first=True
+                )
+        # self.norm = torch.nn.LayerNorm(c),
+        # self.relu = torch.nn.GELU()
+        self.relu = torch.nn.PReLU(c, 0.2)
+
+    def forward(self, x):
+        # x: (batch, time, features)
+        attn_output, _ = self.attention(x, x, x)
+        attn_output = attn_output.transpose(1, 2)
+        # x = x.transpose(1, 2)
+        attn_outpu = self.conv(attn_output) * self.beta
+        x = self.relu(attn_output + )
+        x = x.transpose(1, 2)
+        # -> (batch, time, features)
+        # x = self.norm(x)
+        return x
+'''
+
+class ResConvAtt1d(torch.nn.Module):
+    def __init__(self, c, dilation=1):
+        super().__init__()
+        self.conv = torch.nn.Conv1d(c, c, 3, 1, 1, padding_mode = 'reflect', bias=True)
+        self.beta = torch.nn.Parameter(torch.ones((1, c, 1)), requires_grad=True)
+        self.relu = torch.nn.PReLU(c, 0.2)
+        self.attn = FourierChannelAttention1D(c, c, 11)
+
+    def forward(self, x):
+        # x: (batch, time, features)
+        x = x.transpose(1, 2)      # -> (batch, features, time)
+        x = self.attn(x)
+        x = self.relu(self.conv(x) * self.beta + x)
+        x = x.transpose(1, 2)      # -> (batch, time, features)
+        # x = self.norm(x)
+        return x
+
+class ResConv1d(torch.nn.Module):
+    def __init__(self, c, dropout=0.1):
+        super().__init__()
+        self.conv = torch.nn.Conv1d(c, c, 3, 1, 1, padding_mode = 'reflect', bias=True)
+        self.beta = torch.nn.Parameter(torch.ones((1, c, 1)), requires_grad=True)
+        self.norm = torch.nn.LayerNorm(c)
+        self.attn = nn.MultiheadAttention(
+            embed_dim=c,
+            num_heads=4,
+            dropout=dropout,
+            batch_first=True
+        )
+        self.dropout = torch.nn.Dropout(dropout)
+        self.relu = torch.nn.PReLU(c, 0.2)
+
+    def forward(self, x):
+        # x: (batch, time, features)
+        resudial = x.transpose(1, 2)
+        x = self.norm(x)
+        x, _ = self.attn(x, x, x)
+        x = x.transpose(1, 2)
+        x = self.conv(x) * self.beta
+        x = self.dropout(x)
+        x = self.relu(x + resudial)
+        x = x.transpose(1, 2)   # -> (batch, time, features)
+        return x
+
 class CrossModalEncoder(nn.Module):
-    def __init__(self, input_dim=12, time_dim=8, hidden_dim=128, 
-                 output_dim=128, num_heads=16, dropout=0.1):
+    def __init__(self, input_dim=12, time_dim=8, hidden_dim=256, 
+                 output_dim=256, num_heads=8, dropout=0.1):
         super().__init__()
         
         # Separate pathways for each modality
@@ -274,28 +458,60 @@ class CrossModalEncoder(nn.Module):
             nn.Linear(input_dim, hidden_dim),
             nn.LayerNorm(hidden_dim),
             nn.GELU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.LayerNorm(hidden_dim),
-            nn.GELU(),
         )
         '''
-
+        # '''
         self.input_encoder = nn.Sequential(
-            TemporalConv1d(input_dim, hidden_dim),
+            TemporalConv1d(input_dim + time_dim, hidden_dim),
             nn.LayerNorm(hidden_dim),
             nn.GELU(),
         )
+
+        self.input_encoder1 = nn.Sequential(
+            TemporalConv1d(hidden_dim, 2 * hidden_dim, 3, 2, 1),
+            nn.LayerNorm(2 * hidden_dim),
+            nn.GELU(),
+        )
+
+        # '''
 
         self.input_convblock = nn.Sequential(
             ResConv1d(hidden_dim),
             ResConv1d(hidden_dim),
             ResConv1d(hidden_dim),
             ResConv1d(hidden_dim),
-            ResConv1d(hidden_dim),
-            ResConv1d(hidden_dim),
-            ResConv1d(hidden_dim),
-            ResConv1d(hidden_dim),
         )
+
+        self.input_convblock1 = nn.Sequential(
+            ResConv1d(2 * hidden_dim),
+            ResConv1d(2 * hidden_dim),
+            ResConv1d(2 * hidden_dim),
+            ResConv1d(2 * hidden_dim),
+        )
+
+        self.convblock0 = nn.Sequential(
+            ResConv1d(output_dim),
+            ResConv1d(output_dim),
+            ResConv1d(output_dim),
+            ResConv1d(output_dim),
+        )
+
+        self.convblock1 = nn.Sequential(
+            ResConv1d(output_dim),
+            ResConv1d(output_dim),
+            ResConv1d(output_dim),
+            ResConv1d(output_dim),
+        )
+
+        self.convblock2 = nn.Sequential(
+            ResConv1d(output_dim),
+            ResConv1d(output_dim),
+            ResConv1d(output_dim),
+            ResConv1d(output_dim),
+        )
+
+        self.deeconv = TemporalConvTranspose1d(2 * hidden_dim, hidden_dim)
+        self.mix = TemporalConv1d(2 * hidden_dim, hidden_dim, 3, 1, 1)
 
         self.time_encoder = nn.Sequential(
             nn.Linear(time_dim, hidden_dim),
@@ -331,22 +547,36 @@ class CrossModalEncoder(nn.Module):
 
     def forward(self, x, time_enc):
         # x: (n, l, 4), time_enc: (n, l, 8)
+
+        x = torch.cat((x, time_enc), -1)
+
         x_emb = self.input_encoder(x)  # (n, l, 128)
-        t_emb = self.time_encoder(time_enc)  # (n, l, 128)
+        # t_emb = self.time_encoder(time_enc)
+        # x_emb1 = self.input_encoder1(x_emb)  # (n, l, 128)
         
         x_emb = self.input_convblock(x_emb)
+        # x_emb1 = self.input_convblock1(x_emb1)
+        # x_emb1 = self.deeconv(x_emb1)
+        # x_emb = torch.cat((x_emb, x_emb1), -1)
+        # x_emb = self.mix(x_emb)
 
         # Cross-attention
-        t_attended, _ = self.cross_attn(t_emb, x_emb, x_emb)  # (n, l, 128)
+        # t_attended, _ = self.cross_attn(t_emb, x_emb, x_emb)  # (n, l, 128)
         
         # Concatenate
-        combined = torch.cat([x_emb, t_attended], dim=-1)  # (n, l, 256)
+        # combined = torch.cat([x_emb, t_attended], dim=-1)  # (n, l, 256)
         
+        # combined = self.convblock0(combined)
+
         # Self-attention
-        refined, _ = self.self_attn(combined, combined, combined)  # (n, l, 256)
+        # refined, _ = self.self_attn(combined, combined, combined)  # (n, l, 256)
         
+        # refined = self.convblock1(refined)
+
         # FFN with residual
-        output = self.ffn(refined + combined)  # (n, l, 256)
+        # output = self.ffn(refined + combined)  # (n, l, 256)
+
+        output = self.convblock2(x_emb)
 
         return output
 

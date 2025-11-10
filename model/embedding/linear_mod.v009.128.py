@@ -245,24 +245,6 @@ class ResConv1d(torch.nn.Module):
         # x = self.norm(x)
         return x
 
-class TemporalConv1d(nn.Module):
-    def __init__(self, in_features, out_features, kernel_size=3, stride=1, padding='same'):
-        super().__init__()
-        self.conv = nn.Conv1d(
-            in_features, 
-            out_features, 
-            kernel_size,
-            stride,
-            padding
-            )
-    
-    def forward(self, x):
-        # x: (batch, time, features)
-        x = x.transpose(1, 2)      # -> (batch, features, time)
-        x = self.conv(x)
-        x = x.transpose(1, 2)      # -> (batch, time, features)
-        return x
-    
 class CrossModalEncoder(nn.Module):
     def __init__(self, input_dim=12, time_dim=8, hidden_dim=128, 
                  output_dim=128, num_heads=16, dropout=0.1):
